@@ -145,6 +145,11 @@ public:
   virtual void     ControlInput(void);
   virtual void     AllowControllerInterrupts(boolean fAllow);
 
+#ifdef OPT_TERMINAL_MONITOR_IC  // Allow Input controller to define stuff as well
+  void            ShowTerminalCommandList(void);
+  boolean         ProcessTerminalCommand(byte *psz, byte bLen);
+#endif
+
 private:
 } 
 ;   
@@ -290,7 +295,7 @@ public:
   void            BackgroundProcess(void);
 #endif    
 
-#ifdef OPT_TERMINAL_MONITOR  
+#ifdef OPT_TERMINAL_MONITOR
   void            ShowTerminalCommandList(void);
   boolean         ProcessTerminalCommand(byte *psz, byte bLen);
 #endif

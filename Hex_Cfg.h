@@ -48,7 +48,8 @@
 //===================================================================
 // Debug Options
 #ifdef DBGSerial
-#define OPT_TERMINAL_MONITOR  
+#define OPT_TERMINAL_MONITOR 
+#define OPT_TERMINAL_MONITOR_IC    // Allow the input controller to define stuff as well
 //#define OPT_FIND_SERVO_OFFSETS    // Only useful if terminal monitor is enabled
 //#define OPT_PYPOSE
 #endif
