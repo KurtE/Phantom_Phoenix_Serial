@@ -617,13 +617,8 @@ void setup(){
   DBGSerial.begin(38400);
 #endif
   // Init our ServoDriver
-#ifdef DBGSerial
-  DBGSerial.println("Before Servo Driver Init");
-#endif  
   g_ServoDriver.Init();
-#ifdef DBGSerial  
-  DBGSerial.println("After Servo Driver Init");
-#endif
+
   //Checks to see if our Servo Driver support a GP Player
   //    DBGSerial.write("Program Start\n\r");
   // debug stuff
@@ -647,9 +642,10 @@ void setup(){
   ResetLegInitAngles();
 
   //Single leg control. Make sure no leg is selected
+  #ifdef OPT_SINGLELEG
   g_InControlState.SelectedLeg = 255; // No Leg selected
   PrevSelectedLeg = 255;
-
+#endif
   //Body Positions
   g_InControlState.BodyPos.x = 0;
   g_InControlState.BodyPos.y = 0;
@@ -677,11 +673,8 @@ void setup(){
   g_InControlState.TurretTiltAngle1 = cTurretTiltInit;    // the tile for the turret
 #endif
 
-
   g_InputController.Init();
-#ifdef DBGSerial
-  DBGSerial.println("After Controller Init");
-#endif  
+
   // Servo Driver
   ServoMoveTime = 150;
   g_InControlState.fRobotOn = 0;
@@ -1036,8 +1029,11 @@ boolean CheckVoltage() {
       g_InControlState.BodyRot1.z = 0;
       g_InControlState.TravelLength.x = 0;
       g_InControlState.TravelLength.z = 0;
+
+#ifdef OPT_SINGLELEG
       g_InControlState.TravelLength.y = 0;
       g_InControlState.SelectedLeg = 255;
+#endif
       g_fLowVoltageShutdown = 1;
       s_bLVBeepCnt = 0;    // how many times we beeped...
       g_InControlState.fRobotOn = false;
@@ -1071,6 +1067,7 @@ boolean CheckVoltage() {
 //[SINGLE LEG CONTROL]
 void SingleLegControl(void)
 {
+#ifdef OPT_SINGLELEG
 
   //Check if all legs are down
   AllDown = (LegPosY[cRF]==(short)pgm_read_word(&cInitPosY[cRF])) && 
@@ -1114,6 +1111,7 @@ void SingleLegControl(void)
     if (PrevSelectedLeg!=255)
       PrevSelectedLeg = 255;
   }
+#endif
 }
 
 
@@ -1943,7 +1941,7 @@ void AdjustLegPositions(word XZLength1)
         DBGSerial.print(")->");
       }
 #endif
-#ifdef ADJUSTABLE_LEG_ANGLES
+#ifdef OPT_DYNAMIC_ADJUST_LEGS
       GetSinCos(g_InControlState.aCoxaInitAngle1[LegIndex]);
 #else
 #ifdef cRRInitCoxaAngle1    // We can set different angles for the legs than just where they servo horns are set...
@@ -1980,7 +1978,7 @@ void AdjustLegPositions(word XZLength1)
 //--------------------------------------------------------------------
 void ResetLegInitAngles(void)
 {
-#ifdef ADJUSTABLE_LEG_ANGLES
+#ifdef OPT_DYNAMIC_ADJUST_LEGS
     for (int LegIndex=0; LegIndex < CNT_LEGS; LegIndex++) {
 #ifdef cRRInitCoxaAngle1    // We can set different angles for the legs than just where they servo horns are set...
             g_InControlState.aCoxaInitAngle1[LegIndex] = (short)pgm_read_word(&cCoxaInitAngle1[LegIndex]);
@@ -1997,7 +1995,7 @@ void ResetLegInitAngles(void)
 //--------------------------------------------------------------------
 void RotateLegInitAngles (int iDeltaAngle)
 {
-#ifdef ADJUSTABLE_LEG_ANGLES
+#ifdef OPT_DYNAMIC_ADJUST_LEGS
     for (int LegIndex=0; LegIndex < CNT_LEGS; LegIndex++) {
         // We will use the cCoxaAngle1 array to know which direction the legs logically are
         // If the initial angle is 0 don't mess with.  Hex middle legs...
@@ -2151,6 +2149,10 @@ extern void DumpEEPROMCmd(byte *pszCmdLine);
 #ifdef QUADMODE
 extern void UpdateGaitCmd(byte *pszCmdLine);
 #endif
+#ifdef OPT_DYNAMIC_ADJUST_LEGS
+extern void UpdateInitialPosAndAngCmd(byte *pszCmdLine);
+#endif
+
 //==============================================================================
 // TerminalMonitor - Simple background task checks to see if the user is asking
 //    us to do anything, like update debug levels ore the like.
@@ -2168,8 +2170,11 @@ boolean TerminalMonitor(void)
     DBGSerial.println(F("E - Dump EEPROM"));
 #endif
 #ifdef QUADMODE
-    DBGSerial.println(F("B <percent>"));
+//	DBGSerial.println(F("B <percent>"));
     DBGSerial.println(F("G ST NL RR RF LR LF"));
+#endif
+#ifdef OPT_DYNAMIC_ADJUST_LEGS
+    DBGSerial.println(F("I pos ang"));
 #endif
 #ifdef OPT_TERMINAL_MONITOR_IC    // Allow the input controller to define stuff as well
     g_InputController.ShowTerminalCommandList(); 
@@ -2225,6 +2230,11 @@ boolean TerminalMonitor(void)
 #ifdef QUADMODE
     else if (((szCmdLine[0] == 'g') || (szCmdLine[0] == 'G'))) {
       UpdateGaitCmd(szCmdLine);
+    } 
+#endif
+#ifdef OPT_DYNAMIC_ADJUST_LEGS
+    else if (((szCmdLine[0] == 'i') || (szCmdLine[0] == 'I'))) {
+      UpdateInitialPosAndAngCmd(szCmdLine);
     } 
 #endif
 #ifdef OPT_TERMINAL_MONITOR_IC    // Allow the input controller to define stuff as well
@@ -2287,9 +2297,10 @@ void DumpEEPROM() {
 //--------------------------------------------------------------------
 // GetCmdLineNum - passed pointer to pointer so we can update...
 //--------------------------------------------------------------------
-word GetCmdLineNum(byte **ppszCmdLine) {
+long GetCmdLineNum(byte **ppszCmdLine) {
   byte *psz = *ppszCmdLine;
-  word w = 0;
+  long iVal = 0;
+  int iSign = 1;
 
   // Ignore any blanks
   while (*psz == ' ')
@@ -2301,11 +2312,11 @@ word GetCmdLineNum(byte **ppszCmdLine) {
     psz += 2;  // get over 0x
     for (;;) {
       if ((*psz >= '0') && (*psz <= '9'))
-        w = w * 16 + *psz++ - '0';
+        iVal = iVal * 16 + *psz++ - '0';
       else if ((*psz >= 'a') && (*psz <= 'f'))
-        w = w * 16 + *psz++ - 'a' + 10;
+        iVal = iVal * 16 + *psz++ - 'a' + 10;
       else if ((*psz >= 'A') && (*psz <= 'F'))
-        w = w * 16 + *psz++ - 'A' + 10;
+        iVal = iVal * 16 + *psz++ - 'A' + 10;
       else
         break;
     }
@@ -2313,11 +2324,16 @@ word GetCmdLineNum(byte **ppszCmdLine) {
   }
   else {
     // decimal mode
+    if (*psz == '-') {
+        iSign = -1;
+        psz++;
+    }    
+        
     while ((*psz >= '0') && (*psz <= '9'))
-      w = w * 10 + *psz++ - '0';
+      iVal = iVal * 10 + *psz++ - '0';
   }
   *ppszCmdLine = psz;    // update command line pointer
-  return w;
+  return iSign * iVal;
 
 }
 
@@ -2367,7 +2383,7 @@ void DumpEEPROMCmd(byte *pszCmdLine) {
 // UpdateGaitCmd
 //--------------------------------------------------------------------
 void UpdateGaitCmd(byte *pszCmdLine) {
-  // first byte can be H for hex or W for words...
+  // If no other parameters, show current state
   if (!*++pszCmdLine) {  // Need to get past the command letter first...
     DBGSerial.print("St: ");
     DBGSerial.print(g_InControlState.gaitCur.StepsInGait, DEC);
@@ -2420,9 +2436,36 @@ void UpdateGaitCmd(byte *pszCmdLine) {
     }   
   }
 }
+#endif //Quad Mode
+
+//--------------------------------------------------------------------
+// UpdateGaitCmd
+//--------------------------------------------------------------------
+#ifdef OPT_DYNAMIC_ADJUST_LEGS
+void UpdateInitialPosAndAngCmd(byte *pszCmdLine) {
+  // If no other parameters, show current state
+  if (!*++pszCmdLine) {  // Need to get past the command letter first...
+	DBGSerial.print("Len: ");
+	DBGSerial.print(GetLegsXZLength() , DEC);
+	DBGSerial.print(" Angs: ");
+    for(int LegIndex=0; LegIndex < CNT_LEGS; LegIndex++) {
+        DBGSerial.print(g_InControlState.aCoxaInitAngle1[LegIndex], DEC);
+        DBGSerial.print(" ");
+    }
+    DBGSerial.println();
+  }
+  else {
+	// Get the new leg positions
+    word wNewLegsXZPos = GetCmdLineNum(&pszCmdLine);
+    if (*pszCmdLine) {
+      int  iDeltaAngle = GetCmdLineNum(&pszCmdLine);
+      RotateLegInitAngles(iDeltaAngle);
+    }  
+    AdjustLegPositions(wNewLegsXZPos);
+
+  }
+}
 #endif
-
-
 
 #endif
 

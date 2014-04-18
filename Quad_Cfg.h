@@ -34,8 +34,8 @@
 
 // Define other optional compnents to be included or not...
 //#define PHANTOMX_V2     // Some code may depend on it being a V2 PhantomX
-#define cFemurHornOffset1 -70
-#define cTibiaHornOffset1 380
+#define cFemurHornOffset1 -35 // -70
+#define cTibiaHornOffset1 463 //380
 #define cRRTibiaInv 0 
 #define cRMTibiaInv 0 
 #define cRFTibiaInv 0 
@@ -65,6 +65,9 @@
 #define USE_AX12_DRIVER
 #define OPT_BACKGROUND_PROCESS    // The AX12 has a background process
 //#define OPT_GPPLAYER
+//#define OPT_SINGLELEG
+#define OPT_DYNAMIC_ADJUST_LEGS
+//#define ADJUSTABLE_LEG_ANGLES
 
 
 //==================================================================================================================================
@@ -247,8 +250,8 @@
 //--------------------------------------------------------------------
 //[START POSITIONS FEET]
 #define cHexInitXZ	 150
-#define CHexInitXZCos60  130 //92      // COS(60) = .866
-#define CHexInitXZSin60  75 // 92     // sin(60) = .5
+#define CHexInitXZCosInitAng  134 //92      // COS(27) 134
+#define CHexInitXZSinInitAng  68 // 92     // sin(27) 68
 #define CHexInitY	 25       //30
 
 // Lets try some multi leg positions depending on height settings.
@@ -272,21 +275,21 @@ extern const byte g_abHexIntXZ[] PROGMEM;
 extern const byte g_abHexMaxBodyY[] PROGMEM;
 #endif
 
-#define cRRInitPosX     CHexInitXZCos60      //Start positions of the Right Rear leg
+#define cRRInitPosX     CHexInitXZCosInitAng      //Start positions of the Right Rear leg
 #define cRRInitPosY     CHexInitY
-#define cRRInitPosZ     CHexInitXZSin60
+#define cRRInitPosZ     CHexInitXZSinInitAng
 
-#define cRFInitPosX     CHexInitXZCos60      //Start positions of the Right Front leg
+#define cRFInitPosX     CHexInitXZCosInitAng      //Start positions of the Right Front leg
 #define cRFInitPosY     CHexInitY
-#define cRFInitPosZ     -CHexInitXZSin60
+#define cRFInitPosZ     -CHexInitXZSinInitAng
 
-#define cLRInitPosX     CHexInitXZCos60      //Start positions of the Left Rear leg
+#define cLRInitPosX     CHexInitXZCosInitAng      //Start positions of the Left Rear leg
 #define cLRInitPosY     CHexInitY
-#define cLRInitPosZ     CHexInitXZSin60
+#define cLRInitPosZ     CHexInitXZSinInitAng
 
-#define cLFInitPosX     CHexInitXZCos60      //Start positions of the Left Front leg
+#define cLFInitPosX     CHexInitXZCosInitAng      //Start positions of the Left Front leg
 #define cLFInitPosY     CHexInitY
-#define cLFInitPosZ     -CHexInitXZSin60
+#define cLFInitPosZ     -CHexInitXZSinInitAng
 //--------------------------------------------------------------------
 #endif // HEX_CFG_H
 
