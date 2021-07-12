@@ -839,7 +839,7 @@ for (LegIndex = 0; LegIndex < (CNT_LEGS/2); LegIndex++) {
   }
 #endif
 
-#ifdef DEBUG_TIMINGS
+#if defined(DEBUG_TIMINGS) && defined(DBGSerial)
   // Quick and dirty timings to see how long calculations are taking
   g_cDeltaLoopTimes++;
   if (g_cDeltaLoopTimes == 100) {
@@ -2503,20 +2503,3 @@ void UpdateInitialPosAndAngCmd(byte *pszCmdLine) {
 #endif
 
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
