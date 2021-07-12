@@ -24,7 +24,7 @@
 // Global defines to control which configuration we are using.  Note: Only define one of these...
 // 
 // Which type of control(s) do you want to compile in
-#if defined(__MK20DX256__)
+#if defined(KINETISK)  || defined(__IMXRT1062__)
 #define DBGSerial         Serial
 #else
 #if defined(UBRR2H)
@@ -292,4 +292,3 @@ extern const byte g_abHexMaxBodyY[] PROGMEM;
 #define cLFInitPosZ     -CHexInitXZSinInitAng
 //--------------------------------------------------------------------
 #endif // HEX_CFG_H
-

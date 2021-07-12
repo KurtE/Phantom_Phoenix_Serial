@@ -91,7 +91,7 @@ static const byte cPinTable[] PROGMEM = {
 #define FIRSTTURRETPIN   (CNT_LEGS*3)
 #endif
 // Not sure yet if I will use the controller class or not, but...
-BioloidControllerEx bioloid = BioloidControllerEx(1000000);
+BioloidControllerEx bioloid = BioloidControllerEx();
 boolean g_fServosFree;    // Are the servos in a free state?
 
 
@@ -143,6 +143,11 @@ void ServoDriver::Init(void) {
   // First lets get the actual servo positions for all of our servos...
   //  pinMode(0, OUTPUT);
   g_fServosFree = true;
+  #ifdef DXL_SERIAL
+  bioloid.begin(1000000, DXL_SERIAL, DXL_DIR_PIN);
+  #else
+  bioloid.begin(1000000);
+  #endif
   bioloid.poseSize = NUMSERVOS;
   bioloid.readPose();
 #ifdef cVoltagePin  
@@ -183,7 +188,8 @@ word  g_wVoltageSum = 0;
 byte  g_iVoltages = 0;
 
 word ServoDriver::GetBatteryVoltage(void) {
-  g_iVoltages = (++g_iVoltages)&0x7;  // setup index to our array...
+  g_iVoltages++;  // setup index to our array...
+  g_iVoltages &= 0x7;  // setup index to our array...
   g_wVoltageSum -= g_awVoltages[g_iVoltages];
   g_awVoltages[g_iVoltages] = analogRead(cVoltagePin);
   g_wVoltageSum += g_awVoltages[g_iVoltages];
@@ -758,7 +764,7 @@ void  ServoDriver::BackgroundProcess(void)
   if (ServosEnabled) {
     DebugToggle(A3);
 
-    int iTimeToNextInterpolate = bioloid.interpolateStep(false);    // Do our background stuff...
+    int iTimeToNextInterpolate __attribute__((unused)) = bioloid.interpolateStep(false);    // Do our background stuff...
 
     // Hack if we are not interpolating, maybe try to get voltage.  This will acutally only do this
     // a few times per second.

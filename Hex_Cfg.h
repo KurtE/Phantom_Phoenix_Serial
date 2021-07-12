@@ -25,13 +25,19 @@
 // Global defines to control which configuration we are using.  Note: Only define one of these...
 // 
 // Which type of control(s) do you want to compile in
-#if defined(__MK20DX256__)
+#if defined(KINETISK)  || defined(__IMXRT1062__)
 #define DBGSerial         Serial
 #else
 #if defined(UBRR2H)
 #define DBGSerial         Serial
 #endif
 #endif
+
+#if defined(KINETISK) || defined(KINETISL) || defined(__IMXRT1062__)
+#define DXL_SERIAL (HardwareSerial*)&Serial1
+#define DXL_DIR_PIN -1 // 2 - 
+#endif    
+
 
 // Define other optional compnents to be included or not...
 //#define PHANTOMX_V2     // Some code may depend on it being a V2 PhantomX
@@ -79,7 +85,7 @@
 
 //====================================================================
 // XBEE on non mega???
-#if defined(__MK20DX256__)
+#if defined(KINETISK)  || defined(__IMXRT1062__)
 #define XBeeSerial Serial2
 #else
 #if defined(UBRR2H)
@@ -90,7 +96,7 @@
 #define XBEE_BAUD        38400
 //--------------------------------------------------------------------
 //[Arbotix Pin Numbers]
-#if defined(__MK20DX256__)
+#if defined(KINETISK)  || defined(__IMXRT1062__)
 #define SOUND_PIN    6
 #else
 #define SOUND_PIN    1 //0xff        // Tell system we have no IO pin...
@@ -98,7 +104,7 @@
 #endif
 
 // Define Analog pin and minimum voltage that we will allow the servos to run
-#if defined(__MK20DX256__)
+#if defined(KINETISK)  || defined(__IMXRT1062__)
 // Our Teensy board
 #define cVoltagePin  0
 
@@ -334,4 +340,3 @@ extern const byte g_abHexMaxBodyY[] PROGMEM;
 #define cTarsFactorC	50	//4DOF ONLY
 
 #endif // HEX_CFG_H
-

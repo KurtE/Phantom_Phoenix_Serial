@@ -33,7 +33,6 @@
 //#include <EEPROM.h>
 //#include <PS2X_lib.h>
 #include <pins_arduino.h>
-//#include <SoftwareSerial.h>        
 #define BalanceDivFactor CNT_LEGS    //;Other values than 6 can be used, testing...CAUTION!! At your own risk ;)
 //#include <Wire.h>
 //#include <I2CEEProm.h>
@@ -42,6 +41,13 @@
 #ifdef DBGSerial
 #define DEBUG
 //#define DEBUG_X
+#endif
+
+#define DEBUG_TIMINGS
+#ifdef DEBUG_TIMINGS
+boolean g_fDisplayTimings = true;
+uint32_t  g_ulDeltaLoopTimes = 0;
+uint8_t  g_cDeltaLoopTimes = 0;
 #endif
 
 
@@ -402,7 +408,9 @@ boolean g_fEnableServos = true;
 
 //--------------------------------------------------------------------
 //[REMOTE]                 
+#ifndef cTravelDeadZone
 #define cTravelDeadZone         4    //The deadzone for the analog input from the remote
+#endif
 //====================================================================
 //[ANGLES]
 short           CoxaAngle1[CNT_LEGS];    //Actual Angle of the horizontal hip, decimals = 1
@@ -788,8 +796,11 @@ void loop(void)
     }
 #endif
 
-  for (LegIndex = 0; LegIndex < (CNT_LEGS/2); LegIndex++) {    
+for (LegIndex = 0; LegIndex < (CNT_LEGS/2); LegIndex++) {    
     DoBackgroundProcess();
+#ifdef DEBUG_TIMINGS
+    uint32_t ulST = micros();
+#endif
     BodyFK(-LegPosX[LegIndex]+g_InControlState.BodyPos.x+GaitPosX[LegIndex] - TotalTransX,
     LegPosZ[LegIndex]+g_InControlState.BodyPos.z+GaitPosZ[LegIndex] - TotalTransZ,
     LegPosY[LegIndex]+g_InControlState.BodyPos.y+GaitPosY[LegIndex] - TotalTransY,
@@ -798,11 +809,17 @@ void loop(void)
     LegIK (LegPosX[LegIndex]-g_InControlState.BodyPos.x+BodyFKPosX-(GaitPosX[LegIndex] - TotalTransX), 
     LegPosY[LegIndex]+g_InControlState.BodyPos.y-BodyFKPosY+GaitPosY[LegIndex] - TotalTransY,
     LegPosZ[LegIndex]+g_InControlState.BodyPos.z-BodyFKPosZ+GaitPosZ[LegIndex] - TotalTransZ, LegIndex);
+#ifdef DEBUG_TIMINGS
+    g_ulDeltaLoopTimes += (micros() - ulST);
+#endif
   }
 
   //Do IK for all Left legs  
   for (LegIndex = (CNT_LEGS/2); LegIndex < CNT_LEGS; LegIndex++) {
     DoBackgroundProcess();
+#ifdef DEBUG_TIMINGS
+    uint32_t ulST = micros();
+#endif
     BodyFK(LegPosX[LegIndex]-g_InControlState.BodyPos.x+GaitPosX[LegIndex] - TotalTransX,
     LegPosZ[LegIndex]+g_InControlState.BodyPos.z+GaitPosZ[LegIndex] - TotalTransZ,
     LegPosY[LegIndex]+g_InControlState.BodyPos.y+GaitPosY[LegIndex] - TotalTransY,
@@ -810,6 +827,9 @@ void loop(void)
     LegIK (LegPosX[LegIndex]+g_InControlState.BodyPos.x-BodyFKPosX+GaitPosX[LegIndex] - TotalTransX,
     LegPosY[LegIndex]+g_InControlState.BodyPos.y-BodyFKPosY+GaitPosY[LegIndex] - TotalTransY,
     LegPosZ[LegIndex]+g_InControlState.BodyPos.z-BodyFKPosZ+GaitPosZ[LegIndex] - TotalTransZ, LegIndex);
+#ifdef DEBUG_TIMINGS
+    g_ulDeltaLoopTimes += (micros() - ulST);
+#endif
   }
 #ifdef OPT_WALK_UPSIDE_DOWN
   if (g_fRobotUpsideDown){ //Need to set them back for not messing with the SmoothControl
@@ -818,6 +838,17 @@ void loop(void)
     g_InControlState.BodyRot1.z = -g_InControlState.BodyRot1.z;
   }
 #endif
+
+#ifdef DEBUG_TIMINGS
+  // Quick and dirty timings to see how long calculations are taking
+  g_cDeltaLoopTimes++;
+  if (g_cDeltaLoopTimes == 100) {
+    DBGSerial.println(g_ulDeltaLoopTimes, DEC);
+    g_cDeltaLoopTimes = 0;
+    g_ulDeltaLoopTimes = 0;
+  }
+#endif
+
   //Check mechanical limits
   CheckAngles();
 
@@ -846,7 +877,7 @@ void loop(void)
         ServoMoveTime = ServoMoveTime + BALANCE_DELAY;
     } 
     else //Movement speed excl. Walking
-    ServoMoveTime = 200 + g_InControlState.SpeedControl;
+      ServoMoveTime = 200 + g_InControlState.SpeedControl;
 
     // note we broke up the servo driver into start/commit that way we can output all of the servo information
     // before we wait and only have the termination information to output after the wait.  That way we hopefully
@@ -1817,8 +1848,12 @@ void LegIK (short IKFeetPosX, short IKFeetPosY, short IKFeetPosZ, byte LegIKLegN
 //--------------------------------------------------------------------
 //[CHECK ANGLES] Checks the mechanical limits of the servos
 //--------------------------------------------------------------------
-short CheckServoAngleBounds(short sID,  short sVal, const short *sMin PROGMEM, const short *sMax PROGMEM) {
-
+#if defined(KINETISK)  || defined(__IMXRT1062__)
+short CheckServoAngleBounds(short sID,  short sVal, const short *sMin, const short *sMax)
+#else
+short CheckServoAngleBounds(short sID,  short sVal, const short *sMin PROGMEM, const short *sMax PROGMEM)
+#endif
+{
     // Pull into simple function as so I can report errors on debug 
     // Note ID is bogus, but something to let me know which one.
     short s = (short)pgm_read_word(sMin);
@@ -1913,7 +1948,7 @@ word GetLegsXZLength(void)
 #endif
 
 #ifndef MAX_XZ_LEG_ADJUST
-#define MAX_XZ_LEG_ADJUST   (cCoxaLength[0]+cTibiaLength[0] + cFemurLength[0]/4) 
+#define MAX_XZ_LEG_ADJUST   (word)(cCoxaLength[0]+cTibiaLength[0] + cFemurLength[0]/4) 
 #endif
 
 void AdjustLegPositions(word XZLength1) 

@@ -612,7 +612,7 @@ void CommanderInputController::ShowTerminalCommandList(void)
 // ProcessTerminalCommand: The terminal monitor will call this to see if the
 //     command the user entered was one added by the servo driver.
 //==============================================================================
-void PrintXBeeIDInfo(char *pszID) {
+void PrintXBeeIDInfo(const char *pszID) {
   char ab[20];
   int cbRead;
   while (XBeeSerial.read() != -1)
@@ -633,7 +633,6 @@ boolean CommanderInputController::ProcessTerminalCommand(byte *psz, byte bLen)
 {
   if ((bLen == 1) && ((*psz == 'x') || (*psz == 'X'))) {
     char ab[10];
-    int cbRead;
     delay(15);  // see if we have fast command mode enabled.
     XBeeSerial.print(F("+++")); 
     XBeeSerial.flush();
@@ -647,7 +646,7 @@ boolean CommanderInputController::ProcessTerminalCommand(byte *psz, byte bLen)
       PrintXBeeIDInfo("EC");
 
       XBeeSerial.println("ATCN");  // exit command mode
-      cbRead = XBeeSerial.readBytesUntil('\r', ab, sizeof(ab));
+      XBeeSerial.readBytesUntil('\r', ab, sizeof(ab));
     } 
     else {
       DBGSerial.println("XBee Failed to enter command mode");
